@@ -1,0 +1,110 @@
+from argon2 import PasswordHasher
+from argon2.exceptions import (
+    VerifyMismatchError,
+    InvalidHashError,
+    VerificationError,
+    HashingError,
+)
+from sql_funcs import find_user, insert_user, PATH
+
+ph = PasswordHasher(time_cost=2, memory_cost=19456, parallelism=1)
+
+
+def hash_password(password: str) -> str | None:
+    try:
+        return ph.hash(password)
+    except Exception as e:
+        print(f"[ERROR] {e}")
+        return None
+
+
+def verify_password(hashed: str, password: str) -> bool:
+    try:
+        return ph.verify(hashed, password)
+    except VerifyMismatchError:
+        return False
+    except (InvalidHashError, VerificationError) as e:
+        print(f"[ERROR] {e}")
+        return False
+
+
+def validate_password(password: str):
+    upper_alp = "QWERTYUIOPASDFGHJKLZCVBNM"
+    lower_alp = "qwertyuiopasdfghjklzxcvbnm"
+    nums = "0123456789"
+    special = "_-.!@#$%^&*()+=[];:,<>"
+    check_low = False
+    check_up = False
+    check_num = False
+    check_spec = False
+
+    if not password:
+        return False
+
+    if not (8 <= len(password) <= 64):
+        return False
+
+    if any(i for i in password if i not in upper_alp + lower_alp + nums + special):
+        return False
+
+    for letter in password:
+        if letter in upper_alp:
+            check_up = True
+        if letter in lower_alp:
+            check_low = True
+        if letter in nums:
+            check_num = True
+        if letter in special:
+            check_spec = True
+        if all((check_up, check_low, check_num, check_spec)):
+            return True
+    return False
+
+
+def validate_username(username: str):
+    ALP = "qwertyuiopasdfghjklzxcvbnm1234567890_-."
+    NOT_FIRST = "_-."
+
+    if not username:
+        return False
+
+    if not (3 <= len(username) <= 16):
+        return False
+
+    if username[0] in NOT_FIRST:
+        return False
+
+    for letter in username:
+        if letter.lower() not in ALP:
+            return False
+
+    return True
+
+
+def register(username: str, password: str) -> bool:
+    username = username.strip().lower()
+    if not (validate_password(password)) or not (validate_username(username)):
+        return False
+    try:
+        password = hash_password(password)
+        if insert_user(username, password):
+            return True
+        return False
+    except Exception as e:
+        return False
+
+
+def login(username: str, password: str) -> bool:
+    user = find_user(username, PATH)
+    if (
+        (user is None)
+        or user[5] is not None
+        or not (verify_password(user[2], password))
+    ):
+        return False
+    else:
+        return True
+
+
+if __name__ == "__main__":
+    pass
