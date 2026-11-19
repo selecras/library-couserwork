@@ -4,63 +4,145 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
-PATH = os.getenv("PATH_TO_DB")
+PATH = os.getenv("PATH_TO_DATABASE")
+
+ALLOWED_TABLES_INSERT = {
+    "books": ("name", "description", "author", "year", "publication_year"),
+    "book_copies": ("book_id", "status"),
+    "users": ("username", "password_hash", "role", "deleted_at"),
+    "loans": (
+        "book_copy_id",
+        "reader_id",
+        "issued_by",
+        "loaned_at",
+        "due_at",
+        "returned_at",
+        "returned_to",
+    ),
+}
+
+ALLOWED_TABLES_SELECT = {
+    "books": (
+        "book_id",
+        "name",
+        "description",
+        "author",
+        "year",
+        "publication_year",
+        "added_at",
+    ),
+    "book_copies": ("book_copy_id", "book_id", "added_at", "status"),
+    "users": ("user_id", "username", "role", "created_at", "deleted_at"),
+    "loans": (
+        "loan_id",
+        "book_copy_id",
+        "reader_id",
+        "issued_by",
+        "loaned_at",
+        "due_at",
+        "returned_at",
+        "returned_to",
+    ),
+}
 
 
-def init_db() -> None:
-    """
+def table_white_list(
+    param_names: tuple,
+    params: tuple,
+    table: str,
+    mode: str = "insert"
+):
+    if mode.lower() == "insert":
+        white_list = ALLOWED_TABLES_INSERT
+    elif mode.lower() == "select":
+        white_list = ALLOWED_TABLES_SELECT
+    else:
+        return None
 
-    :return: Initial database creation
-    """
+    if len(param_names) != len(params):
+        return None
 
-    with sq.connect(PATH) as conn:
-        conn.execute("""
-        CREATE TABLE IF NOT EXISTS users (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            username TEXT NOT NULL UNIQUE,
-            password_hash TEXT NOT NULL,
-            role TEXT NOT NULL DEFAULT 'reader'
-                CHECK (role in ('reader', 'librarian')),
-            created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
-            deleted_at TEXT DEFAULT NULL
-        )
-        """)
+    if not params or not param_names:
+        return None
 
-
-def find_user(username: str, path: str) -> tuple | None:
-    """
-    :param username: string username of the user you want to find
-    :param path: string path to the db file
-    :return: tuple if user is found else if user is not found or exception was caught None
-    """
     try:
-        with sq.connect(path) as conn:
-            result = conn.execute(
-                "SELECT * FROM users WHERE username = ?", (username,)
-            ).fetchone()
-        return result
-    except (sq.OperationalError, sq.InterfaceError, sq.DatabaseError) as e:
+        table = table.lower()
+        param_names = tuple(map(str.lower, param_names))
+    except (ValueError, TypeError, AttributeError) as e:
         print(f"[ERROR] {e}")
         return None
 
+    if len(param_names) != len(set(param_names)):
+        return None
 
-def insert_user(username: str, password: str) -> bool:
-    """
-    :param username: any valid username
-    :param password: any valid password
-    :return: True if user is inserted into the database else False
-    """
+    if n := white_list.get(table):
+        if not set(param_names).issubset(n):
+            print("[WARNING] Invalid input")
+            return None
+    else:
+        print("[WARNING] Invalid input")
+        return None
+
+    return table, param_names
+
+
+def insert_any_sql(
+    param_names: tuple,
+    params: tuple,
+    table: str,
+    path: str = PATH
+) -> bool:
+    if not (temp := table_white_list(param_names, params, table, "insert")):
+        return False
+
+    table = temp[0]
+    param_names = temp[1]
+
     try:
-        with sq.connect(PATH) as conn:
+        with sq.connect(path) as conn:
+            conn.execute("PRAGMA foreign_keys = ON;")
             conn.execute(
-                "INSERT INTO users (username, password_hash) VALUES (?, ?)",
-                (username, password),
+                f"INSERT INTO {table} ({', '.join(param_names)}) VALUES ({'?, ' * (len(params) - 1)}?)",
+                params,
             )
-        return True
+            return True
     except sq.Error as e:
         print(f"[ERROR] {e}")
     return False
 
 
+def find_records(
+    param_names: tuple,
+    params: tuple,
+    table: str,
+    fetch: str = "one",
+    path: str = PATH
+) -> tuple | None:
+    if not (temp := table_white_list(param_names, params, table, "select")):
+        return None
+
+    table = temp[0]
+    param_names = temp[1]
+
+    if fetch not in ("one", "all"):
+        return None
+
+    try:
+        with sq.connect(path) as conn:
+            sql = f"SELECT * FROM {table} WHERE {' = ? AND '.join(param_names)} = ?"
+            parameters = params
+
+            conn.execute("PRAGMA foreign_keys = ON;")
+            if fetch == "one":
+                result = conn.execute(sql, parameters).fetchone()
+            else:
+                result = tuple(conn.execute(sql, parameters).fetchall())
+
+        return result if result else None
+    except (sq.OperationalError, sq.InterfaceError, sq.DatabaseError) as e:
+        print(f"[ERROR] {e}")
+        return None
+
+
 if __name__ == "__main__":
-    print(PATH)
+    pass
