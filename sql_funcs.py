@@ -46,6 +46,70 @@ ALLOWED_TABLES_SELECT = {
 }
 
 
+import sqlite3 as sq
+
+
+def init_db(path: str) -> None:
+    with sq.connect(path) as conn:
+        conn.execute("""
+            CREATE TABLE IF NOT EXISTS users (
+                user_id INTEGER,
+                username TEXT NOT NULL UNIQUE,
+                password_hash TEXT NOT NULL,
+                role TEXT NOT NULL DEFAULT 'reader'
+                    CHECK(role IN ('reader', 'librarian')),
+                created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                deleted_at TEXT DEFAULT NULL,
+                PRIMARY KEY(user_id AUTOINCREMENT)
+            )
+        """)
+
+        conn.execute("""
+            CREATE TABLE IF NOT EXISTS books (
+                book_id INTEGER,
+                name TEXT NOT NULL,
+                description TEXT,
+                author TEXT,
+                year INTEGER,
+                publication_year INTEGER,
+                added_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                PRIMARY KEY(book_id AUTOINCREMENT)
+            )
+        """)
+
+        conn.execute("""
+            CREATE TABLE IF NOT EXISTS book_copies (
+                book_copy_id INTEGER,
+                book_id INTEGER NOT NULL,
+                added_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                status TEXT DEFAULT 'available'
+                    CHECK(status IN ('available', 'lost', 'retired')),
+                PRIMARY KEY(book_copy_id AUTOINCREMENT),
+                FOREIGN KEY(book_id) REFERENCES books(book_id)
+            )
+        """)
+
+        conn.execute("""
+            CREATE TABLE IF NOT EXISTS loans (
+                loan_id INTEGER,
+                book_copy_id INTEGER NOT NULL,
+                reader_id INTEGER NOT NULL,
+                issued_by INTEGER NOT NULL,
+                loaned_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                due_at TEXT NOT NULL,
+                returned_at TEXT DEFAULT NULL,
+                returned_to INTEGER DEFAULT NULL,
+                PRIMARY KEY(loan_id AUTOINCREMENT),
+                FOREIGN KEY(book_copy_id)
+                    REFERENCES book_copies(book_copy_id),
+                FOREIGN KEY(issued_by)
+                    REFERENCES users(user_id),
+                FOREIGN KEY(reader_id)
+                    REFERENCES users(user_id)
+            )
+        """)
+
+
 def table_white_list(
     param_names: tuple,
     params: tuple,
