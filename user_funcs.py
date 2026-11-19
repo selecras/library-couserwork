@@ -2,7 +2,6 @@ from argon2 import PasswordHasher
 from argon2.exceptions import VerifyMismatchError, InvalidHashError, VerificationError
 from sql_funcs import select_records, PATH, insert_any_sql
 
-
 ph = PasswordHasher(time_cost=2, memory_cost=19456, parallelism=1)
 
 
@@ -97,11 +96,6 @@ def register(username: str, password: str, path: str = PATH) -> bool:
 def login(username: str, password: str) -> bool:
     username = username.strip().lower()
     user = select_records(param_names=("username",), params=(username,), table="users")
-    return not (user is None or user[5] is not None or not (verify_password(user[2], password)))
-
-
-if __name__ == "__main__":
-    pass
-    # from testing.user_gen import user_generator
-    # for _ in range(16):
-    #     print(register(*user_generator()))
+    return not (
+        user is None or user[5] is not None or not (verify_password(user[2], password))
+    )

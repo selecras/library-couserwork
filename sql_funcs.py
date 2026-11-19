@@ -1,7 +1,6 @@
 import os
 import sqlite3 as sq
 from dotenv import load_dotenv
-from datetime import datetime
 
 load_dotenv()
 
@@ -108,20 +107,8 @@ def init_db(path: str) -> None:
         """)
 
 
-def validate_date(date: str):
-    try:
-        check = datetime.strptime(date, "%Y-%m-%d %H:%M:%S")
-        return check
-    except Exception:
-        print("[ERROR] Invalid date")
-        return False
-
-
 def validate_sql_columns(
-    param_names: tuple,
-    params: tuple,
-    table: str,
-    mode: str = "insert"
+    param_names: tuple, params: tuple, table: str, mode: str = "insert"
 ) -> tuple | None:
     if mode.lower() == "insert":
         white_list = ALLOWED_TABLES_INSERT
@@ -158,10 +145,7 @@ def validate_sql_columns(
 
 
 def insert_any_sql(
-    param_names: tuple,
-    params: tuple,
-    table: str,
-    path: str = PATH
+    param_names: tuple, params: tuple, table: str, path: str = PATH
 ) -> bool:
     if not (temp := validate_sql_columns(param_names, params, table, "insert")):
         return False
@@ -183,11 +167,7 @@ def insert_any_sql(
 
 
 def select_records(
-    param_names: tuple,
-    params: tuple,
-    table: str,
-    fetch: str = "one",
-    path: str = PATH
+    param_names: tuple, params: tuple, table: str, fetch: str = "one", path: str = PATH
 ) -> tuple | None:
     if not (temp := validate_sql_columns(param_names, params, table, "select")):
         return None
@@ -213,11 +193,3 @@ def select_records(
     except (sq.OperationalError, sq.InterfaceError, sq.DatabaseError) as e:
         print(f"[ERROR] {e}")
         return None
-
-
-if __name__ == "__main__":
-    with sq.connect(PATH) as conn:
-        result = tuple(conn.execute("SELECT * FROM users").fetchall())
-    for i in result:
-        print(*i, sep=', ')
-

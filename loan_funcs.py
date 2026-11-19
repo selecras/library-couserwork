@@ -1,60 +1,89 @@
 import sqlite3 as sq
 from datetime import datetime, timezone
-from sql_funcs import select_records, PATH, validate_date
+from sql_funcs import PATH
 
 
-def find_available_copy(book_id: int) -> int | None:
-    book = select_records(("book_id",), (book_id,), 'books', 'one')
-    book_copies = select_records(('book_id',), (book_id,), 'book_copies', 'all')
-
-    if not book or not book_copies:
+def validate_date(date: str) -> datetime | None:
+    try:
+        check = datetime.strptime(date, "%Y-%m-%d %H:%M:%S")
+        return check
+    except ValueError:
+        print("[ERROR] Invalid date")
         return None
-    for book_copy in book_copies:
-        if book_copy[3] == 'available':
-            return book_copy[0]
-    return None
 
 
-def issue_book(book_id: int, reader_id: int, issued_by: int, due_at: str, path: str=PATH):
-    book = select_records(("book_id",), (book_id,), 'books', 'one')
-    reader = select_records(("user_id",), (reader_id,), "users", 'one')
-    librarian = select_records(("user_id",), (issued_by,), "users", 'one')
-    book_copies = select_records(('book_id',), (book_id,), 'book_copies', 'all')
-    book_copy_id = find_available_copy(book_id)
-
-    if not book or not reader or not book_copies or not librarian or not book_copy_id:
-        return False
-
+def issue_book(
+    book_id: int, reader_id: int, issued_by: int, due_at: str, path: str = PATH
+) -> bool:
+    connection_created = False
     if not (due_at := validate_date(due_at)):
         return False
 
-    now = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%S")
+    now = datetime.now(timezone.utc).replace(microsecond=0, tzinfo=None)
     if due_at < now:
         return False
 
+    due_at = str(due_at)
+
     try:
-        with sq.connect(path) as conn:
+        with sq.connect(path, timeout=10, autocommit=True) as conn:
+            connection_created = True
             conn.execute("PRAGMA foreign_keys = ON;")
-            conn.execute(
-                "UPDATE book_copies SET status = loaned WHERE book_copy_id = ?",
-                (book_copy_id,)
-            )
+            conn.execute("BEGIN IMMEDIATE")
+
+            reader = conn.execute(
+                "SELECT * FROM users WHERE user_id = ?", (reader_id,)
+            ).fetchone()
+            librarian = conn.execute(
+                "SELECT * FROM users WHERE user_id = ?", (issued_by,)
+            ).fetchone()
+            book_copy_id = conn.execute(
+                """
+                        SELECT *
+                        FROM book_copies as bc
+                        WHERE bc.book_id = ?
+                            AND bc.status = 'available'
+                            AND NOT EXISTS (
+                                SELECT 1
+                                FROM loans as l
+                                WHERE l.book_copy_id = bc.book_copy_id
+                                    AND l.returned_at IS NULL
+                        )
+                        ORDER BY bc.book_copy_id
+                        LIMIT 1""",
+                (book_id,),
+            ).fetchone()
+
+            if (
+                not reader
+                or not librarian
+                or not book_copy_id
+                or reader[3] != "reader"
+                or reader[5] is not None
+                or librarian[3] != "librarian"
+                or librarian[5] is not None
+            ):
+                conn.execute("ROLLBACK")
+                return False
+
+            book_copy_id = book_copy_id[0]
+
             conn.execute(
                 "INSERT INTO loans (book_copy_id, reader_id, issued_by, due_at) VALUES (?, ?, ?, ?)",
-                (book_copy_id, reader_id, issued_by, due_at)
+                (book_copy_id, reader_id, issued_by, due_at),
             )
+            conn.execute("COMMIT")
         return True
-    except sq.Error as e:
+    except Exception as e:
+        if connection_created:
+            if conn.in_transaction:
+                conn.execute("ROLLBACK")
         print(f"[ERROR] {e}")
         return False
+    finally:
+        if connection_created:
+            conn.close()
 
 
 def return_book():
     pass
-
-
-if __name__ == "__main__":
-    pass
-    # utc_now = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%S")
-    # print(utc_now)
-    # print(datetime.strptime(utc_now, "%Y-%m-%d %H:%M:%S"))
