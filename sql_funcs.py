@@ -1,6 +1,7 @@
-import sqlite3 as sq
 import os
+import sqlite3 as sq
 from dotenv import load_dotenv
+from datetime import datetime
 
 load_dotenv()
 
@@ -46,9 +47,6 @@ ALLOWED_TABLES_SELECT = {
 }
 
 
-import sqlite3 as sq
-
-
 def init_db(path: str) -> None:
     with sq.connect(path) as conn:
         conn.execute("""
@@ -83,7 +81,7 @@ def init_db(path: str) -> None:
                 book_id INTEGER NOT NULL,
                 added_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
                 status TEXT DEFAULT 'available'
-                    CHECK(status IN ('available', 'lost', 'retired')),
+                    CHECK(status IN ('available', 'lost', 'retired', 'loaned')),
                 PRIMARY KEY(book_copy_id AUTOINCREMENT),
                 FOREIGN KEY(book_id) REFERENCES books(book_id)
             )
@@ -110,12 +108,21 @@ def init_db(path: str) -> None:
         """)
 
 
-def table_white_list(
+def validate_date(date: str):
+    try:
+        check = datetime.strptime(date, "%Y-%m-%d %H:%M:%S")
+        return check
+    except Exception:
+        print("[ERROR] Invalid date")
+        return False
+
+
+def validate_sql_columns(
     param_names: tuple,
     params: tuple,
     table: str,
     mode: str = "insert"
-):
+) -> tuple | None:
     if mode.lower() == "insert":
         white_list = ALLOWED_TABLES_INSERT
     elif mode.lower() == "select":
@@ -156,7 +163,7 @@ def insert_any_sql(
     table: str,
     path: str = PATH
 ) -> bool:
-    if not (temp := table_white_list(param_names, params, table, "insert")):
+    if not (temp := validate_sql_columns(param_names, params, table, "insert")):
         return False
 
     table = temp[0]
@@ -175,14 +182,14 @@ def insert_any_sql(
     return False
 
 
-def find_records(
+def select_records(
     param_names: tuple,
     params: tuple,
     table: str,
     fetch: str = "one",
     path: str = PATH
 ) -> tuple | None:
-    if not (temp := table_white_list(param_names, params, table, "select")):
+    if not (temp := validate_sql_columns(param_names, params, table, "select")):
         return None
 
     table = temp[0]
@@ -209,4 +216,8 @@ def find_records(
 
 
 if __name__ == "__main__":
-    pass
+    with sq.connect(PATH) as conn:
+        result = tuple(conn.execute("SELECT * FROM users").fetchall())
+    for i in result:
+        print(*i, sep=', ')
+

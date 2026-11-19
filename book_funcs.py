@@ -1,15 +1,15 @@
-from sql_funcs import insert_any_sql, PATH
 from datetime import datetime
+from sql_funcs import insert_any_sql, PATH
 
 
 def insert_book(
     name: str,
     description: str = "",
     author: str = "",
-    year: int = None,
-    publication_year: int = None,
+    year: int | None = None,
+    publication_year: int | None = None,
     path: str = PATH,
-):
+) -> bool:
 
     if year is not None:
         if not (-5000 <= year <= datetime.now().year):
@@ -27,5 +27,5 @@ def insert_book(
     )
 
 
-def insert_phys_book(book_id: int, path: str = PATH):
+def insert_phys_book(book_id: int, path: str = PATH) -> bool:
     return insert_any_sql(("book_id",), (book_id,), "book_copies", path)

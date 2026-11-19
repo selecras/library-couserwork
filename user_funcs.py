@@ -1,7 +1,7 @@
 from argon2 import PasswordHasher
 from argon2.exceptions import VerifyMismatchError, InvalidHashError, VerificationError
-from sql_funcs import find_records, PATH, insert_any_sql
-from random import choice
+from sql_funcs import select_records, PATH, insert_any_sql
+
 
 ph = PasswordHasher(time_cost=2, memory_cost=19456, parallelism=1)
 
@@ -24,7 +24,7 @@ def verify_password(hashed: str, password: str) -> bool:
         return False
 
 
-def validate_password(password: str):
+def validate_password(password: str) -> bool:
     upper_alp = "QWERTYUIOPASDFGHJKLZCVBNM"
     lower_alp = "qwertyuiopasdfghjklzxcvbnm"
     nums = "0123456789"
@@ -57,9 +57,9 @@ def validate_password(password: str):
     return False
 
 
-def validate_username(username: str):
-    ALP = "qwertyuiopasdfghjklzxcvbnm1234567890_-."
-    NOT_FIRST = "_-."
+def validate_username(username: str) -> bool:
+    alp = "qwertyuiopasdfghjklzxcvbnm1234567890_-."
+    not_first = "_-."
 
     if not username:
         return False
@@ -67,11 +67,11 @@ def validate_username(username: str):
     if not (3 <= len(username) <= 16):
         return False
 
-    if username[0] in NOT_FIRST:
+    if username[0] in not_first:
         return False
 
     for letter in username:
-        if letter.lower() not in ALP:
+        if letter.lower() not in alp:
             return False
 
     return True
@@ -84,7 +84,7 @@ def register(username: str, password: str, path: str = PATH) -> bool:
     try:
         password = hash_password(password)
         if not password:
-            print(f"[ERROR] Unable to hash password")
+            print("[ERROR] Unable to hash password")
             return False
         return insert_any_sql(
             ("username", "password_hash"), (username, password), "users", path
@@ -96,16 +96,12 @@ def register(username: str, password: str, path: str = PATH) -> bool:
 
 def login(username: str, password: str) -> bool:
     username = username.strip().lower()
-    user = find_records(param_names=("username",), params=(username,), table="users")
-    if (
-        (user is None)
-        or user[5] is not None
-        or not (verify_password(user[2], password))
-    ):
-        return False
-    else:
-        return True
+    user = select_records(param_names=("username",), params=(username,), table="users")
+    return not (user is None or user[5] is not None or not (verify_password(user[2], password)))
 
 
 if __name__ == "__main__":
     pass
+    # from testing.user_gen import user_generator
+    # for _ in range(16):
+    #     print(register(*user_generator()))
