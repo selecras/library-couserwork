@@ -46,7 +46,7 @@ ALLOWED_TABLES_SELECT = {
 }
 
 
-def init_db(path: str) -> None:
+def init_db(path: str = PATH) -> None:
     with sq.connect(path) as conn:
         conn.execute("""
             CREATE TABLE IF NOT EXISTS users (
@@ -70,6 +70,8 @@ def init_db(path: str) -> None:
                 year INTEGER,
                 publication_year INTEGER,
                 added_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                isbn TEXT NOT NULL
+                    CHECK(LENGTH("isbn") = 13 AND "isbn" NOT GLOB '*[^0-9]*') UNIQUE,
                 PRIMARY KEY(book_id AUTOINCREMENT)
             )
         """)
@@ -193,3 +195,7 @@ def select_records(
     except (sq.OperationalError, sq.InterfaceError, sq.DatabaseError) as e:
         print(f"[ERROR] {e}")
         return None
+
+
+if __name__ == "__main__":
+    init_db()
