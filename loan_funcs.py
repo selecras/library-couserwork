@@ -85,5 +85,46 @@ def issue_book(
             conn.close()
 
 
-def return_book():
-    pass
+def return_book(loan_id: int, returned_to: int, path: str=PATH) -> bool:
+    connection_created = False
+
+    try:
+        with sq.connect(path, timeout=10, autocommit=True) as conn:
+            connection_created = True
+            conn.execute("PRAGMA foreign_keys = ON;")
+            conn.execute("BEGIN IMMEDIATE")
+
+            librarian = conn.execute("""
+            SELECT 1 FROM users 
+            WHERE user_id = ? 
+                AND role = 'librarian'
+                AND deleted_at IS NULL""").fetchone()
+
+            if not librarian:
+                conn.execute("ROLLBACK")
+                return False
+
+            is_updated = conn.execute("""
+            UPDATE loans
+            SET returned_at = CURRENT_TIMESTAMP,
+                returned_to = ?
+            WHERE loan_id = ?
+                AND returned_at IS NULL""",
+            (returned_to, loan_id)
+            ).rowcount
+
+            if is_updated != 1:
+                conn.execute("ROLLBACK")
+                return False
+
+            conn.execute("COMMIT")
+        return True
+    except Exception as e:
+        if connection_created:
+            if conn.in_transaction:
+                conn.execute("ROLLBACK")
+        print(f"[ERROR] {e}")
+        return False
+    finally:
+        if connection_created:
+            conn.close()
