@@ -1,3 +1,4 @@
+import sqlite3 as sq
 from argon2 import PasswordHasher
 from argon2.exceptions import VerifyMismatchError, InvalidHashError, VerificationError
 from sql_funcs import select_records, PATH, insert_any_sql
@@ -76,7 +77,7 @@ def validate_username(username: str) -> bool:
     return True
 
 
-def register(username: str, password: str, path: str = PATH) -> bool:
+def register(username: str, password: str, role: str='reader', path: str = PATH) -> bool:
     username = username.strip().lower()
     if not (validate_password(password)) or not (validate_username(username)):
         return False
@@ -86,16 +87,58 @@ def register(username: str, password: str, path: str = PATH) -> bool:
             print("[ERROR] Unable to hash password")
             return False
         return insert_any_sql(
-            ("username", "password_hash"), (username, password), "users", path
+            ("username", "password_hash", "role"), (username, password, role), "users", path
         )
     except Exception as e:
         print(f"[ERROR] {e}")
         return False
 
 
-def login(username: str, password: str) -> bool:
+def login(username: str, password: str, path: str=PATH) -> bool:
     username = username.strip().lower()
-    user = select_records(param_names=("username",), params=(username,), table="users")
+    user = select_records(param_names=("username",), params=(username,), table="users", path=path)
     return not (
         user is None or user[5] is not None or not (verify_password(user[2], password))
     )
+
+
+def delete_user(user_id: int, path: str=PATH) -> bool:
+    connection_created = False
+
+    try:
+        with sq.connect(path, timeout=10, autocommit=True) as conn:
+            connection_created = True
+            conn.execute("PRAGMA foreign_keys = ON;")
+            conn.execute("BEGIN IMMEDIATE")
+
+            loaned_books = conn.execute("""
+            SELECT 1 FROM loans 
+            WHERE reader_id = ?
+                AND returned_at IS NULL""", (user_id,)).fetchone()
+
+            if loaned_books:
+                conn.execute("ROLLBACK")
+                return False
+
+            is_updated = conn.execute("""
+            UPDATE users
+            SET deleted_at = CURRENT_TIMESTAMP
+            WHERE user_id = ?
+                AND deleted_at IS NULL""", (user_id,)
+            ).rowcount
+
+            if is_updated != 1:
+                conn.execute("ROLLBACK")
+                return False
+
+            conn.execute("COMMIT")
+        return True
+    except Exception as e:
+        if connection_created:
+            if conn.in_transaction:
+                conn.execute("ROLLBACK")
+        print(f"[ERROR] {e}")
+        return False
+    finally:
+        if connection_created:
+            conn.close()

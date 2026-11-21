@@ -34,6 +34,14 @@ def insert_book(
         if not (-5000 <= publication_year <= datetime.now().year):
             return False
 
+    if year is not None and publication_year is not None:
+        if publication_year < year:
+            return False
+
+    isbn = isbn.strip()
+    if not validate_isbn(isbn):
+        return False
+
     return insert_any_sql(
         ("name", "description", "author", "year", "publication_year", "isbn"),
         (name, description, author, year, publication_year, isbn),

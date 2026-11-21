@@ -7,7 +7,7 @@ load_dotenv()
 PATH = os.getenv("PATH_TO_DATABASE")
 
 ALLOWED_TABLES_INSERT = {
-    "books": ("name", "description", "author", "year", "publication_year"),
+    "books": ("name", "description", "author", "year", "publication_year", "isbn"),
     "book_copies": ("book_id", "status"),
     "users": ("username", "password_hash", "role", "deleted_at"),
     "loans": (
@@ -30,6 +30,7 @@ ALLOWED_TABLES_SELECT = {
         "year",
         "publication_year",
         "added_at",
+        "isbn"
     ),
     "book_copies": ("book_copy_id", "book_id", "added_at", "status"),
     "users": ("user_id", "username", "role", "created_at", "deleted_at"),
