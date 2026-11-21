@@ -83,7 +83,7 @@ def init_db(path: str = PATH) -> None:
                 book_id INTEGER NOT NULL,
                 added_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
                 status TEXT DEFAULT 'available'
-                    CHECK(status IN ('available', 'lost', 'retired', 'loaned')),
+                    CHECK(status IN ('available', 'lost', 'retired')),
                 PRIMARY KEY(book_copy_id AUTOINCREMENT),
                 FOREIGN KEY(book_id) REFERENCES books(book_id)
             )
@@ -107,6 +107,12 @@ def init_db(path: str = PATH) -> None:
                 FOREIGN KEY(reader_id)
                     REFERENCES users(user_id)
             )
+        """)
+
+        conn.execute("""
+            CREATE UNIQUE INDEX IF NOT EXISTS unique_active_loan 
+            ON loans(book_copy_id) 
+            WHERE returned_at IS NULL;
         """)
 
 
