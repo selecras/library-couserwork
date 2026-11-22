@@ -1,10 +1,10 @@
 import os
 import sqlite3 as sq
-from dotenv import load_dotenv
+from contextlib import closing
+from pathlib import Path
 
-load_dotenv()
-
-PATH = os.getenv("PATH_TO_DATABASE")
+BASE_DIR = Path(__file__).resolve().parent
+PATH = BASE_DIR / "data" / "library.db"
 
 ALLOWED_TABLES_INSERT = {
     "books": ("name", "description", "author", "year", "publication_year", "isbn"),
@@ -163,12 +163,13 @@ def insert_any_sql(
     param_names = temp[1]
 
     try:
-        with sq.connect(path) as conn:
-            conn.execute("PRAGMA foreign_keys = ON;")
-            conn.execute(
-                f"INSERT INTO {table} ({', '.join(param_names)}) VALUES ({'?, ' * (len(params) - 1)}?)",
-                params,
-            )
+        with closing(sq.connect(path, timeout=10)) as conn:
+            with conn:
+                conn.execute("PRAGMA foreign_keys = ON;")
+                conn.execute(
+                    f"INSERT INTO {table} ({', '.join(param_names)}) VALUES ({'?, ' * (len(params) - 1)}?)",
+                    params,
+                )
             return True
     except sq.Error as e:
         print(f"[ERROR] {e}")
@@ -188,16 +189,15 @@ def select_records(
         return None
 
     try:
-        with sq.connect(path) as conn:
+        with closing(sq.connect(path, timeout=5)) as conn:
             sql = f"SELECT * FROM {table} WHERE {' = ? AND '.join(param_names)} = ?"
             parameters = params
-
-            conn.execute("PRAGMA foreign_keys = ON;")
-            if fetch == "one":
-                result = conn.execute(sql, parameters).fetchone()
-            else:
-                result = tuple(conn.execute(sql, parameters).fetchall())
-
+            with conn:
+                conn.execute("PRAGMA foreign_keys = ON;")
+                if fetch == "one":
+                    result = conn.execute(sql, parameters).fetchone()
+                else:
+                    result = tuple(conn.execute(sql, parameters).fetchall())
         return result if result else None
     except (sq.OperationalError, sq.InterfaceError, sq.DatabaseError) as e:
         print(f"[ERROR] {e}")
