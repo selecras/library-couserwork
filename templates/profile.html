@@ -8,4 +8,41 @@
     <p>Логин: {{ user.username }}</p>
     <p>Роль: {{ user.role }}</p>
     <p>Дата регистрации: {{ user.created_at }}</p>
+    {% if g.user.role == "reader" %}
+        <h2>Активные выдачи</h2>
+        {% if loaned_books.loaned %}
+            <ul>
+                {% for book in loaned_books.loaned %}
+                    <li>
+                        <strong>"{{ book.name }}"</strong>
+                        <p>Автор: {{ book.author }}</p>
+                        <p>Взята {{ book.loaned_at }}</p>
+                        <p>Вернуть до {{ book.due_at }}</p>
+                        {% if book.is_overdue %}
+                            <p>Просрочена</p>
+                        {% endif %}
+                        <p>ID долга: {{ book.loan_id }}</p>
+                    </li>
+                {% endfor %}
+            </ul>
+        {% else %}
+            <p>Нет долгов</p>
+        {% endif %}
+        <h2>Закрытые выдачи</h2>
+        {% if loaned_books.returned %}
+            <ul>
+                {% for book in loaned_books.returned %}
+                    <li>
+                        <strong>"{{ book.name }}"</strong>
+                        <p>Автор: {{ book.author }}</p>
+                        <p>Взята {{ book.loaned_at }}</p>
+                        <p>Возвращена {{ book.returned_at }}</p>
+                        <p>ID долга: {{ book.loan_id }}</p>
+                    </li>
+                {% endfor %}
+            </ul>
+        {% else %}
+            <p>Нет возвращённых книг</p>
+        {% endif %}
+    {% endif %}
 {% endblock %}

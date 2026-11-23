@@ -1,0 +1,34 @@
+{% extends "base.html" %}
+
+{% block title %}Панель библиотекаря{% endblock %}
+
+{% block content %}
+    <h1>Панель библиотекаря</h1>
+
+    <h2>Выдать книгу</h2>
+
+    <form method="POST" action="{{ url_for('librarian_panel') }}">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+
+        <label for="book_id">ID книги:</label>
+        <input type="number" id="book_id" name="book_id" min="1" required>
+
+        <label for="reader_id">ID читателя</label>
+        <input type="number" id="reader_id" name="reader_id" min="1" required>
+
+        <label for="due_at">Вернуть до:</label>
+        <input type="datetime-local" id="due_at" name="due_at" required>
+
+        <button type="submit">Выдать книгу</button>
+
+    </form>
+
+    <h2>Вернуть книгу</h2>
+
+    <form method="POST" action="{{ url_for('return_book_route') }}">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        <label for="loan_id">ID выдачи:</label>
+        <input type="number" id="loan_id" name="loan_id" min="1" required>
+        <button type="submit">Вернуть книгу</button>
+    </form>
+{% endblock %}

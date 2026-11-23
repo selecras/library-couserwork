@@ -30,7 +30,7 @@ ALLOWED_TABLES_SELECT = {
         "year",
         "publication_year",
         "added_at",
-        "isbn"
+        "isbn",
     ),
     "book_copies": ("book_copy_id", "book_id", "added_at", "status"),
     "users": ("user_id", "username", "role", "created_at", "deleted_at"),
@@ -48,7 +48,7 @@ ALLOWED_TABLES_SELECT = {
 
 
 def init_db(path: str = PATH) -> None:
-    with sq.connect(path) as conn:
+    with closing(sq.connect(path)) as conn:
         conn.execute("""
             CREATE TABLE IF NOT EXISTS users (
                 user_id INTEGER,

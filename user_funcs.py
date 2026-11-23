@@ -77,7 +77,9 @@ def validate_username(username: str) -> bool:
     return True
 
 
-def register(username: str, password: str, role: str='reader', path: str = PATH) -> bool:
+def register(
+    username: str, password: str, role: str = "reader", path: str = PATH
+) -> bool:
     username = username.strip().lower()
     if not (validate_password(password)) or not (validate_username(username)):
         return False
@@ -87,16 +89,21 @@ def register(username: str, password: str, role: str='reader', path: str = PATH)
             print("[ERROR] Unable to hash password")
             return False
         return insert_any_sql(
-            ("username", "password_hash", "role"), (username, password, role), "users", path
+            ("username", "password_hash", "role"),
+            (username, password, role),
+            "users",
+            path,
         )
     except Exception as e:
         print(f"[ERROR] {e}")
         return False
 
 
-def login(username: str, password: str, path: str=PATH) -> int | None:
+def login(username: str, password: str, path: str = PATH) -> int | None:
     username = username.strip().lower()
-    user = select_records(param_names=("username",), params=(username,), table="users", path=path)
+    user = select_records(
+        param_names=("username",), params=(username,), table="users", path=path
+    )
 
     if not user or user["deleted_at"] is not None:
         return None
@@ -107,7 +114,7 @@ def login(username: str, password: str, path: str=PATH) -> int | None:
     return user["user_id"]
 
 
-def delete_user(user_id: int, path: str=PATH) -> bool:
+def delete_user(user_id: int, path: str = PATH) -> bool:
     connection_created = False
 
     try:
@@ -116,20 +123,25 @@ def delete_user(user_id: int, path: str=PATH) -> bool:
             conn.execute("PRAGMA foreign_keys = ON;")
             conn.execute("BEGIN IMMEDIATE")
 
-            loaned_books = conn.execute("""
+            loaned_books = conn.execute(
+                """
             SELECT 1 FROM loans 
             WHERE reader_id = ?
-                AND returned_at IS NULL""", (user_id,)).fetchone()
+                AND returned_at IS NULL""",
+                (user_id,),
+            ).fetchone()
 
             if loaned_books:
                 conn.execute("ROLLBACK")
                 return False
 
-            is_updated = conn.execute("""
+            is_updated = conn.execute(
+                """
             UPDATE users
             SET deleted_at = CURRENT_TIMESTAMP
             WHERE user_id = ?
-                AND deleted_at IS NULL""", (user_id,)
+                AND deleted_at IS NULL""",
+                (user_id,),
             ).rowcount
 
             if is_updated != 1:
@@ -164,9 +176,5 @@ def get_current_user(session) -> dict | None:
         "user_id": user["user_id"],
         "username": user["username"],
         "role": user["role"],
-        "created_at": user["created_at"]
+        "created_at": user["created_at"],
     }
-
-
-if __name__ == "__main__":
-    register("sorphq_library", "qwe123!@#QWE", "librarian")

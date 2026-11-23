@@ -6,6 +6,7 @@
     <h1>Авторизация</h1>
 
     <form method="POST" action="{{ url_for('login') }}">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
         <label for="username">Логин:</label>
         <input type="text" id="username" name="username" required>
 

@@ -56,8 +56,19 @@ def insert_phys_book(book_id: int, path: str = PATH) -> bool:
     return insert_any_sql(("book_id",), (book_id,), "book_copies", path)
 
 
-def get_books(path: str=PATH, to_get: tuple | list=("name", "author", "year")) -> list[sq.Row] | None:
-    whitelist = ("book_id", "name", "description", "author", "year", "publication_year", "added_at", "isbn")
+def get_books(
+    path: str = PATH, to_get: tuple | list = ("name", "author", "year")
+) -> list[sq.Row] | None:
+    whitelist = (
+        "book_id",
+        "name",
+        "description",
+        "author",
+        "year",
+        "publication_year",
+        "added_at",
+        "isbn",
+    )
     if not to_get or not all(i in whitelist for i in to_get):
         return None
 

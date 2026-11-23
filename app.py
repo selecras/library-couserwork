@@ -1,14 +1,19 @@
-from flask import Flask, render_template, request, session, url_for, redirect, abort, g
+from flask import Flask, render_template, request, session, url_for, redirect, abort, g, flash
 from functools import wraps
+from datetime import datetime, timezone
 import os
+from flask_wtf.csrf import CSRFProtect
+from dotenv import load_dotenv
 from book_funcs import get_books
 from user_funcs import login as authenticate_user, get_current_user
-from dotenv import load_dotenv
+from loan_funcs import get_user_loans, validate_date, issue_book, return_book
 
 load_dotenv()
 
 app = Flask(__name__)
 app.config["SECRET_KEY"] = os.environ["FLASK_SECRET_KEY"]
+
+csrf = CSRFProtect(app)
 
 
 @app.before_request
@@ -20,7 +25,7 @@ def login_required(func):
     @wraps(func)
     def wrapper(*args, **kwargs):
         if g.user is None:
-            abort(401) # Пользователь не прошел аутентификацию
+            abort(401)  # Пользователь не прошел аутентификацию
         return func(*args, **kwargs)
 
     return wrapper
@@ -33,26 +38,20 @@ def librarian_required(func):
         if g.user["role"] != "librarian":
             abort(403)
         return func(*args, **kwargs)
+
     return wrapper
 
 
 @app.route("/")
 def index():
-    return render_template(
-        "index.html",
-        library_name="Моя библиотека",
-        user=g.user
-    )
+    return render_template("index.html", library_name="Моя библиотека", user=g.user)
 
 
 @app.route("/catalog")
 def catalog():
     books = get_books()
 
-    return render_template(
-        "catalog.html",
-        books=books
-    )
+    return render_template("catalog.html", books=books)
 
 
 @app.route("/login", methods=["GET", "POST"])
@@ -81,13 +80,65 @@ def logout():
 @app.route("/profile")
 @login_required
 def profile():
+    if g.user["role"] == "reader":
+        loaned_books = get_user_loans(g.user["user_id"]) or {"loaned": [], "returned": []}
+        now = datetime.now(timezone.utc).replace(microsecond=0, tzinfo=None)
+        for book in loaned_books.get("loaned", {}):
+            due_at = validate_date(book["due_at"])
+            if due_at is not None:
+                book["is_overdue"] = due_at < now
+    else:
+        loaned_books = {}
     return render_template(
         "profile.html",
-        user=g.user
+        user=g.user,
+        loaned_books=loaned_books
     )
 
 
-@app.route("/librarian")
+@app.route("/librarian", methods=["GET", "POST"])
 @librarian_required
 def librarian_panel():
-    return "Панель библиотекаря"
+    if request.method == "POST":
+        try:
+            book_id = int(request.form.get("book_id",))
+            reader_id = int(request.form.get("reader_id"))
+            due_at = datetime.fromisoformat(request.form.get("due_at", ""))
+            due_at = due_at.strftime("%Y-%m-%d %H:%M:%S")
+        except (ValueError, TypeError):
+            flash("Некорректные данные формы", "error")
+            return redirect(url_for("librarian_panel"))
+
+        if book_id <= 0 or reader_id <= 0:
+            flash("Некорректные данные формы", "error")
+            return redirect(url_for("librarian_panel"))
+
+        loan_id = issue_book(book_id, reader_id, g.user["user_id"], due_at)
+        if loan_id is not None:
+            flash(f"Книга успешно выдана! ID выдачи: {loan_id}", "success")
+            return redirect(url_for("librarian_panel"))
+        flash(f"Ошибка при выдаче", "error")
+        return redirect(url_for("librarian_panel"))
+
+    return render_template("librarian.html")
+
+
+@app.route("/return_book", methods=["POST"])
+@librarian_required
+def return_book_route():
+    if request.method == "POST":
+        try:
+            loan_id = int(request.form.get("loan_id"))
+        except (ValueError, TypeError):
+            flash("Некорректные данные формы", "error")
+            return redirect(url_for("librarian_panel"))
+
+        if loan_id <= 0:
+            flash("Некорректные данные формы", "error")
+            return redirect(url_for("librarian_panel"))
+
+        if return_book(loan_id, g.user["user_id"]):
+            flash(f"Выдача с ID {loan_id} успешно возвращена", "success")
+            return redirect(url_for("librarian_panel"))
+        flash("Ошибка возврата", "error")
+        return redirect(url_for("librarian_panel"))
