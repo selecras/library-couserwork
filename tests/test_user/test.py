@@ -52,5 +52,5 @@ def test_soft_delete(test_db):
     assert result is True
 
     user = select_records(("username",), ("sharipov_timur",), table='users', path=test_db)
-    assert user[5] is not None # Проверяем, что ячейка deleted_at заполнена, т.е. аккаунт удалён
+    assert user["deleted_at"] is not None # Проверяем, что ячейка deleted_at заполнена, т.е. аккаунт удалён
 

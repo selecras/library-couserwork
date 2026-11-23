@@ -1,0 +1,11 @@
+{% extends "base.html" %}
+
+{% block title %}Личный кабинет{% endblock %}
+
+{% block content %}
+    <h1>Личный кабинет</h1>
+    <p>ID: {{ user.user_id }}</p>
+    <p>Логин: {{ user.username }}</p>
+    <p>Роль: {{ user.role }}</p>
+    <p>Дата регистрации: {{ user.created_at }}</p>
+{% endblock %}

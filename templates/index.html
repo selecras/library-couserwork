@@ -4,6 +4,15 @@
 
 {% block content %}
     <h1>{{ library_name }}</h1>
-    <h2>Добро пожаловать в библиотеку!</h2>
+    {% if user is not none %}
+        <h2>Добро пожаловать, {{ user.username }}!</h2>
+        {% if user.role == "reader" %}
+            <h2>Вы -- читатель</h2>
+        {% else %}
+            <h2>Вы -- библиотекарь</h2>
+        {% endif %}
+    {% else %}
+        <h2>Добро пожаловать, гость!</h2>
+    {% endif %}
     <p>Система учёта книг и читателей</p>
 {% endblock %}

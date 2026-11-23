@@ -94,12 +94,17 @@ def register(username: str, password: str, role: str='reader', path: str = PATH)
         return False
 
 
-def login(username: str, password: str, path: str=PATH) -> bool:
+def login(username: str, password: str, path: str=PATH) -> int | None:
     username = username.strip().lower()
     user = select_records(param_names=("username",), params=(username,), table="users", path=path)
-    return not (
-        user is None or user[5] is not None or not (verify_password(user[2], password))
-    )
+
+    if not user or user["deleted_at"] is not None:
+        return None
+
+    if not verify_password(user["password_hash"], password):
+        return None
+
+    return user["user_id"]
 
 
 def delete_user(user_id: int, path: str=PATH) -> bool:
@@ -142,3 +147,26 @@ def delete_user(user_id: int, path: str=PATH) -> bool:
     finally:
         if connection_created:
             conn.close()
+
+
+def get_current_user(session) -> dict | None:
+    if not session:
+        return None
+    user_id = session.get("user_id")
+    if user_id is None:
+        return None
+
+    user = select_records(("user_id",), (user_id,), "users")
+    if user is None or user["deleted_at"] is not None:
+        return None
+
+    return {
+        "user_id": user["user_id"],
+        "username": user["username"],
+        "role": user["role"],
+        "created_at": user["created_at"]
+    }
+
+
+if __name__ == "__main__":
+    register("sorphq_library", "qwe123!@#QWE", "librarian")

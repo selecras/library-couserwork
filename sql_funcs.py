@@ -178,7 +178,7 @@ def insert_any_sql(
 
 def select_records(
     param_names: tuple, params: tuple, table: str, fetch: str = "one", path: str = PATH
-) -> tuple | None:
+) -> sq.Row | tuple[sq.Row] | None:
     if not (temp := validate_sql_columns(param_names, params, table, "select")):
         return None
 
@@ -193,6 +193,7 @@ def select_records(
             sql = f"SELECT * FROM {table} WHERE {' = ? AND '.join(param_names)} = ?"
             parameters = params
             with conn:
+                conn.row_factory = sq.Row
                 conn.execute("PRAGMA foreign_keys = ON;")
                 if fetch == "one":
                     result = conn.execute(sql, parameters).fetchone()
