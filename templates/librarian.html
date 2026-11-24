@@ -7,7 +7,7 @@
 
     <h2>Выдать книгу</h2>
 
-    <form method="POST" action="{{ url_for('librarian_panel') }}">
+    <form method="POST" action="{{ url_for('issue_book_route') }}">
         <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
 
         <label for="book_id">ID книги:</label>
@@ -30,5 +30,33 @@
         <label for="loan_id">ID выдачи:</label>
         <input type="number" id="loan_id" name="loan_id" min="1" required>
         <button type="submit">Вернуть книгу</button>
+    </form>
+
+    <h2>Добавить книгу в каталог</h2>
+
+    <form method="POST" action="{{ url_for('add_book_route') }}">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        <label for="isbn">ISBN:</label>
+        <input type="text" id="isbn" name="isbn" required>
+        <label for="name">Название:</label>
+        <input type="text" id="name" name="name" required>
+        <label for="author">Автор:</label>
+        <input type="text" id="author" name="author">
+        <label for="description">Описание:</label>
+        <input type="text" id="description" name="description">
+        <label for="year">Год написания:</label>
+        <input type="number" id="year" name="year">
+        <label for="publication_year">Год публикации:</label>
+        <input type="text" id="publication_year" name="publication_year" required>
+        <button type="submit">Добавить книгу</button>
+    </form>
+
+    <h2>Добавить экземпляр книги</h2>
+
+    <form method="POST" action="{{ url_for('add_physical_copy_route') }}">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        <label for="book_id_for_copy">ID книги:</label>
+        <input type="number" id="book_id_for_copy" name="book_id_for_copy" min="1" required>
+        <button type="submit">Добавить экземпляр</button>
     </form>
 {% endblock %}

@@ -155,9 +155,9 @@ def validate_sql_columns(
 
 def insert_any_sql(
     param_names: tuple, params: tuple, table: str, path: str = PATH
-) -> bool:
+) -> int | None:
     if not (temp := validate_sql_columns(param_names, params, table, "insert")):
-        return False
+        return None
 
     table = temp[0]
     param_names = temp[1]
@@ -166,14 +166,14 @@ def insert_any_sql(
         with closing(sq.connect(path, timeout=10)) as conn:
             with conn:
                 conn.execute("PRAGMA foreign_keys = ON;")
-                conn.execute(
+                inserted_id = conn.execute(
                     f"INSERT INTO {table} ({', '.join(param_names)}) VALUES ({'?, ' * (len(params) - 1)}?)",
                     params,
-                )
-            return True
+                ).lastrowid
+            return inserted_id
     except sq.Error as e:
         print(f"[ERROR] {e}")
-    return False
+    return None
 
 
 def select_records(

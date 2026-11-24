@@ -4,7 +4,7 @@ from datetime import datetime, timezone
 import os
 from flask_wtf.csrf import CSRFProtect
 from dotenv import load_dotenv
-from book_funcs import get_books
+from book_funcs import get_books, get_available_book_copies, insert_book, insert_phys_book
 from user_funcs import login as authenticate_user, get_current_user
 from loan_funcs import get_user_loans, validate_date, issue_book, return_book
 
@@ -49,8 +49,10 @@ def index():
 
 @app.route("/catalog")
 def catalog():
-    books = get_books()
-
+    books = get_books(to_get=('name', 'author', 'year', 'book_id'))
+    for book in books:
+        copies = get_available_book_copies(book["book_id"])
+        book['copies'] = len(copies) if copies is not None else 0
     return render_template("catalog.html", books=books)
 
 
@@ -99,9 +101,15 @@ def profile():
 @app.route("/librarian", methods=["GET", "POST"])
 @librarian_required
 def librarian_panel():
+    return render_template("librarian.html")
+
+
+@app.route("/librarian/issue_book", methods=["POST"])
+@librarian_required
+def issue_book_route():
     if request.method == "POST":
         try:
-            book_id = int(request.form.get("book_id",))
+            book_id = int(request.form.get("book_id", ))
             reader_id = int(request.form.get("reader_id"))
             due_at = datetime.fromisoformat(request.form.get("due_at", ""))
             due_at = due_at.strftime("%Y-%m-%d %H:%M:%S")
@@ -120,20 +128,16 @@ def librarian_panel():
         flash(f"Ошибка при выдаче", "error")
         return redirect(url_for("librarian_panel"))
 
-    return render_template("librarian.html")
 
-
-@app.route("/return_book", methods=["POST"])
+@app.route("/librarian/return_book", methods=["POST"])
 @librarian_required
 def return_book_route():
     if request.method == "POST":
         try:
             loan_id = int(request.form.get("loan_id"))
+            if loan_id <= 0:
+                raise ValueError
         except (ValueError, TypeError):
-            flash("Некорректные данные формы", "error")
-            return redirect(url_for("librarian_panel"))
-
-        if loan_id <= 0:
             flash("Некорректные данные формы", "error")
             return redirect(url_for("librarian_panel"))
 
@@ -142,3 +146,48 @@ def return_book_route():
             return redirect(url_for("librarian_panel"))
         flash("Ошибка возврата", "error")
         return redirect(url_for("librarian_panel"))
+
+
+@app.route("/librarian/add_book", methods=["POST"])
+@librarian_required
+def add_book_route():
+    if request.method == "POST":
+        try:
+            isbn = request.form.get("isbn").strip()
+            name = request.form.get("name").strip()
+            description = request.form.get("description").strip()
+            author = request.form.get("author").strip()
+            year = int(request.form.get("year"))
+            publication_year = int(request.form.get("publication_year"))
+        except (ValueError, TypeError, AttributeError):
+            flash("Некорректные данные формы", "error")
+            return redirect(url_for("librarian_panel"))
+
+        if (book_id := insert_book(isbn, name, description, author, year, publication_year)) is not None:
+            flash(f"Книга успешно добавлена в каталог (ID = {book_id})", "success")
+            return redirect(url_for("librarian_panel"))
+
+        flash("Ошибка добавления книги", category="error")
+        return redirect(url_for("librarian_panel"))
+
+
+@app.route("/librarian/add_copy", methods=["POST"])
+@librarian_required
+def add_physical_copy_route():
+    if request.method == "POST":
+        try:
+            book_id = int(request.form.get("book_id_for_copy"))
+            if book_id < 1:
+                raise ValueError
+        except (ValueError, TypeError):
+            flash("Некорректные данные формы", "error")
+            return redirect(url_for("librarian_panel"))
+
+        if (phys_id := insert_phys_book(book_id)) is not None:
+            flash(f"Успешно добавлен экзмепляр книги (ID = {phys_id})", category='success')
+            return redirect(url_for("librarian_panel"))
+
+        flash("Ошибка добавления экземпляра", category="error")
+        return redirect(url_for("librarian_panel"))
+
+

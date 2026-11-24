@@ -21,12 +21,12 @@
                         {% if book.is_overdue %}
                             <p>Просрочена</p>
                         {% endif %}
-                        <p>ID долга: {{ book.loan_id }}</p>
+                        <p>ID выдачи: {{ book.loan_id }}</p>
                     </li>
                 {% endfor %}
             </ul>
         {% else %}
-            <p>Нет долгов</p>
+            <p>Нет активных выдач</p>
         {% endif %}
         <h2>Закрытые выдачи</h2>
         {% if loaned_books.returned %}
@@ -37,12 +37,12 @@
                         <p>Автор: {{ book.author }}</p>
                         <p>Взята {{ book.loaned_at }}</p>
                         <p>Возвращена {{ book.returned_at }}</p>
-                        <p>ID долга: {{ book.loan_id }}</p>
+                        <p>ID выдачи: {{ book.loan_id }}</p>
                     </li>
                 {% endfor %}
             </ul>
         {% else %}
-            <p>Нет возвращённых книг</p>
+            <p>Нет закрытых выдач</p>
         {% endif %}
     {% endif %}
 {% endblock %}

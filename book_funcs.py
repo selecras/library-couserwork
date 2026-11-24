@@ -26,23 +26,23 @@ def insert_book(
     year: int | None = None,
     publication_year: int | None = None,
     path: str = PATH,
-) -> bool:
+) -> int | None:
 
     if year is not None:
         if not (-5000 <= year <= datetime.now().year):
-            return False
+            return None
 
     if publication_year is not None:
         if not (-5000 <= publication_year <= datetime.now().year):
-            return False
+            return None
 
     if year is not None and publication_year is not None:
         if publication_year < year:
-            return False
+            return None
 
     isbn = isbn.strip()
     if not validate_isbn(isbn):
-        return False
+        return None
 
     return insert_any_sql(
         ("name", "description", "author", "year", "publication_year", "isbn"),
@@ -58,7 +58,7 @@ def insert_phys_book(book_id: int, path: str = PATH) -> bool:
 
 def get_books(
     path: str = PATH, to_get: tuple | list = ("name", "author", "year")
-) -> list[sq.Row] | None:
+) -> list[dict] | None:
     whitelist = (
         "book_id",
         "name",
@@ -80,6 +80,31 @@ def get_books(
             SELECT {", ".join(to_get)}
             FROM books;
             """).fetchall()
+    except sq.Error as e:
+        print(f"[ERROR] {e}")
+        return None
+
+    data = [dict(i) for i in data]
+    return data
+
+def get_available_book_copies(book_id: int, path: str=PATH) -> list | None:
+    if book_id <= 0:
+        return None
+    try:
+        with closing(sq.connect(path)) as conn:
+            conn.row_factory = sq.Row
+            data = conn.execute("""
+            SELECT *
+            FROM book_copies AS bc
+            WHERE bc.book_id = ?
+                AND bc.status = "available"
+                AND NOT EXISTS(
+                    SELECT 1
+                    FROM loans AS l
+                    WHERE l.book_copy_id = bc.book_copy_id
+                        AND l.returned_at IS NULL
+                )
+            """, (book_id,)).fetchall()
     except sq.Error as e:
         print(f"[ERROR] {e}")
         return None
