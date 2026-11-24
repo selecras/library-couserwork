@@ -7,16 +7,24 @@
     <p>Добро пожаловать в каталог!</p>
     <p>Доступные для прочтения книги:</p>
     {% if books %}
-        <ul>
+        <div class="book-grid">
             {% for book in books %}
-                <li>
-                    <strong>"{{ book.name }}"</strong>
+                <div class="book-card">
+                    <h4>"{{ book.name }}"</h4>
                     <p>Автор: {{ book.author }}</p>
                     <p>Год написания: {{ book.year }}</p>
-                    <p>Количество доступных экземпляров: {{ book.available_copies }}</p>
-                </li>
+                    {% if book.available_copies > 0 %}
+                        <p class="book-available">
+                            ✔ В наличии: {{ book.available_copies }}
+                        </p>
+                    {% else %}
+                        <p class="book-unavailable">
+                            ❌ Нет в наличии
+                        </p>
+                    {% endif %}
+                </div>
             {% endfor %}
-        </ul>
+        </div>
     {% else %}
         <p>Книг пока нет</p>
     {% endif %}

@@ -2,28 +2,33 @@
 <html lang="ru">
 <head>
     <meta charset="UTF-8">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
     <title>{% block title %}Библиотека{% endblock %}</title>
 </head>
 <body>
     <nav>
-        <a href="{{ url_for('index') }}">Главная</a>
-        <a href="{{ url_for('catalog') }}">Каталог</a>
-        {% if g.user %}
-            <a href="{{ url_for('profile') }}">Личный кабинет</a>
-        {% endif %}
+        <div class="nav-links">
+            <a href="{{ url_for('index') }}">Главная</a>
+            <a href="{{ url_for('catalog') }}">Каталог</a>
+            {% if g.user %}
+                <a href="{{ url_for('profile') }}">Личный кабинет</a>
+            {% endif %}
 
-        {% if g.user.role == "librarian" %}
-            <a href="{{ url_for('librarian_panel') }}">Панель библиотекаря</a>
-        {% endif %}
+            {% if g.user.role == "librarian" %}
+                <a href="{{ url_for('librarian_panel') }}">Панель библиотекаря</a>
+            {% endif %}
+        </div>
 
-        {% if g.user is none %}
-            <a href="{{ url_for('login') }}">Вход</a>
-        {% else %}
-            <form method="POST" action="{{ url_for('logout') }}">
-                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-                <button type="submit">Выйти</button>
-            </form>
-        {% endif %}
+        <div class="nav-auth">
+            {% if g.user is none %}
+                <a href="{{ url_for('login') }}">Вход</a>
+            {% else %}
+                <form method="POST" action="{{ url_for('logout') }}">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                    <button type="submit">Выйти</button>
+                </form>
+            {% endif %}
+        </div>
     </nav>
 
     <main>

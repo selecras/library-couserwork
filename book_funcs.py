@@ -88,9 +88,9 @@ def get_books(
     return data
 
 
-def get_catalog_books() -> list | None:
+def get_catalog_books(path: str=PATH) -> list[sq.Row] | None:
     try:
-        with closing(sq.connect(PATH)) as conn:
+        with closing(sq.connect(path)) as conn:
             conn.row_factory = sq.Row
             data = conn.execute("""
             SELECT
@@ -109,7 +109,7 @@ def get_catalog_books() -> list | None:
                     WHERE l.book_copy_id = bc.book_copy_id
                         AND l.returned_at IS NULL
             )
-            GROUP BY b.book_id, b.name
+            GROUP BY b.book_id, b.name, b.author, b.year
             """).fetchall()
             return data
     except sq.Error as e:
@@ -117,4 +117,4 @@ def get_catalog_books() -> list | None:
         return None
 
 if __name__ == "__main__":
-    print(get_catalog_books())
+    pass
