@@ -52,7 +52,7 @@ def insert_book(
     )
 
 
-def insert_phys_book(book_id: int, path: str = PATH) -> bool:
+def insert_phys_book(book_id: int, path: str = PATH) -> int | None:
     return insert_any_sql(("book_id",), (book_id,), "book_copies", path)
 
 

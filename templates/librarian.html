@@ -35,19 +35,26 @@
     <h2>Добавить книгу в каталог</h2>
 
     <form method="POST" action="{{ url_for('add_book_route') }}">
-        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"
+
         <label for="isbn">ISBN:</label>
         <input type="text" id="isbn" name="isbn" required>
+
         <label for="name">Название:</label>
         <input type="text" id="name" name="name" required>
+
         <label for="author">Автор:</label>
         <input type="text" id="author" name="author">
+
         <label for="description">Описание:</label>
         <input type="text" id="description" name="description">
+
         <label for="year">Год написания:</label>
         <input type="number" id="year" name="year">
+
         <label for="publication_year">Год публикации:</label>
-        <input type="text" id="publication_year" name="publication_year" required>
+        <input type="number" id="publication_year" name="publication_year">
+
         <button type="submit">Добавить книгу</button>
     </form>
 

@@ -79,7 +79,7 @@ def validate_username(username: str) -> bool:
 
 def register(
     username: str, password: str, role: str = "reader", path: str = PATH
-) -> bool:
+) -> int | None:
     username = username.strip().lower()
     if not (validate_password(password)) or not (validate_username(username)):
         return False

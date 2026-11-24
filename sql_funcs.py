@@ -142,12 +142,12 @@ def validate_sql_columns(
     if len(param_names) != len(set(param_names)):
         return None
 
-    if n := white_list.get(table):
-        if not set(param_names).issubset(n):
-            print("[WARNING] Invalid input")
-            return None
-    else:
-        print("[WARNING] Invalid input")
+    allowed_columns = white_list.get(table)
+
+    if allowed_columns is None:
+        return None
+
+    if not set(param_names).issubset(allowed_columns):
         return None
 
     return table, param_names
@@ -170,7 +170,7 @@ def insert_any_sql(
                     f"INSERT INTO {table} ({', '.join(param_names)}) VALUES ({'?, ' * (len(params) - 1)}?)",
                     params,
                 ).lastrowid
-            return inserted_id
+        return inserted_id
     except sq.Error as e:
         print(f"[ERROR] {e}")
     return None
