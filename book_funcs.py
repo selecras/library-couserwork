@@ -87,26 +87,34 @@ def get_books(
     data = [dict(i) for i in data]
     return data
 
-def get_available_book_copies(book_id: int, path: str=PATH) -> list | None:
-    if book_id <= 0:
-        return None
+
+def get_catalog_books() -> list | None:
     try:
-        with closing(sq.connect(path)) as conn:
+        with closing(sq.connect(PATH)) as conn:
             conn.row_factory = sq.Row
             data = conn.execute("""
-            SELECT *
-            FROM book_copies AS bc
-            WHERE bc.book_id = ?
-                AND bc.status = "available"
+            SELECT
+                b.book_id,
+                b.name,
+                b.author,
+                b.year,
+                COUNT(bc.book_copy_id) as available_copies
+            FROM books AS b
+            LEFT JOIN book_copies AS bc
+                ON b.book_id = bc.book_id
+                AND bc.status = 'available'
                 AND NOT EXISTS(
                     SELECT 1
                     FROM loans AS l
                     WHERE l.book_copy_id = bc.book_copy_id
                         AND l.returned_at IS NULL
-                )
-            """, (book_id,)).fetchall()
+            )
+            GROUP BY b.book_id, b.name
+            """).fetchall()
+            return data
     except sq.Error as e:
         print(f"[ERROR] {e}")
         return None
 
-    return data
+if __name__ == "__main__":
+    print(get_catalog_books())

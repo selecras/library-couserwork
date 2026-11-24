@@ -4,7 +4,7 @@ from datetime import datetime, timezone
 import os
 from flask_wtf.csrf import CSRFProtect
 from dotenv import load_dotenv
-from book_funcs import get_books, get_available_book_copies, insert_book, insert_phys_book
+from book_funcs import get_books, insert_book, insert_phys_book, get_catalog_books
 from user_funcs import login as authenticate_user, get_current_user
 from loan_funcs import get_user_loans, validate_date, issue_book, return_book
 
@@ -49,11 +49,7 @@ def index():
 
 @app.route("/catalog")
 def catalog():
-    books = get_books(to_get=('name', 'author', 'year', 'book_id'))
-    if books is not None:
-        for book in books:
-            copies = get_available_book_copies(book["book_id"])
-            book['copies'] = len(copies) if copies is not None else 0
+    books = get_catalog_books()
     return render_template("catalog.html", books=books)
 
 
@@ -85,12 +81,11 @@ def logout():
 def profile():
     if g.user["role"] == "reader":
         loaned_books = get_user_loans(g.user["user_id"]) or {"loaned": [], "returned": []}
-        if loaned_books is not None:
-            now = datetime.now(timezone.utc).replace(microsecond=0, tzinfo=None)
-            for book in loaned_books.get("loaned", {}):
-                due_at = validate_date(book["due_at"])
-                if due_at is not None:
-                    book["is_overdue"] = due_at < now
+        now = datetime.now(timezone.utc).replace(microsecond=0, tzinfo=None)
+        for book in loaned_books.get("loaned", {}):
+            due_at = validate_date(book["due_at"])
+            if due_at is not None:
+                book["is_overdue"] = due_at < now
     else:
         loaned_books = {}
     return render_template(
@@ -156,6 +151,7 @@ def add_book_route():
         name = request.form.get("name").strip()
         description = request.form.get("description").strip()
         author = request.form.get("author").strip()
+
         year_raw = request.form.get("year", "").strip()
         year = int(year_raw) if year_raw else None
 
